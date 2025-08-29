@@ -1,11 +1,12 @@
 spring:
   config:
     activate:
-      on-profile: postgres
+      on-profile: cloud
   datasource:
-    url: jdbc:postgresql://localhost:5432/gigfinder
-    username: postgres
-    password: vaibhav23
+    # Use environment variables for a shared cloud DB
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -18,4 +19,4 @@ spring:
 flyway:
   enabled: true
   validate-on-migrate: false
-  ignore-migration-patterns: "*:ignored"
+  locations: classpath:db/migration

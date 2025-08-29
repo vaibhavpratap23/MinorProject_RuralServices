@@ -1,262 +1,194 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { motion } from 'framer-motion'
-import { 
-  Home, 
-  Users, 
-  BookOpen, 
-  Wrench, 
-  Heart, 
-  Car, 
-  Camera, 
-  Zap,
+import {
+  Plug,
+  Droplets,
+  Hammer,
+  Building2,
+  Bug,
+  Leaf,
+  Paintbrush,
+  Tv2,
+  Home,
+  Car,
+  Boxes,
   ArrowRight,
-  Star,
-  CheckCircle,
   MapPin
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card'
+import { Input } from '../components/ui/Input'
+import { useState } from 'react'
 
 const categories = [
-  { name: "Maids & Helpers", icon: Home, description: "Full-time, cleaning, cooking maids", color: "from-blue-500 to-cyan-500" },
-  { name: "Food Services", icon: Heart, description: "Home cooks, tiffin services", color: "from-orange-500 to-red-500" },
-  { name: "Education", icon: BookOpen, description: "Tutors, music, dance teachers", color: "from-purple-500 to-pink-500" },
-  { name: "Tech Repairs", icon: Wrench, description: "Mobile, laptop, appliance repairs", color: "from-green-500 to-emerald-500" },
-  { name: "Personal Care", icon: Heart, description: "Beauticians, massage, fitness", color: "from-pink-500 to-rose-500" },
-  { name: "Vehicle Care", icon: Car, description: "Car cleaning, drivers, mechanics", color: "from-indigo-500 to-blue-500" },
-  { name: "Events", icon: Camera, description: "Photography, decoration, catering", color: "from-yellow-500 to-orange-500" },
-  { name: "Home Repairs", icon: Zap, description: "Electrical, plumbing, painting", color: "from-red-500 to-pink-500" }
-]
-
-const steps = [
-  {
-    number: "1",
-    title: "Post a Job",
-    description: "Describe what you need and set your budget",
-    icon: CheckCircle
-  },
-  {
-    number: "2", 
-    title: "Get Matched",
-    description: "Verified workers will accept your job",
-    icon: Users
-  },
-  {
-    number: "3",
-    title: "Job Done", 
-    description: "Pay only after the work is completed",
-    icon: Star
-  }
+  { name: 'Electrical & Electronics', icon: Plug, description: 'Wiring, fan, TV, fridge repairs', color: 'from-yellow-500 to-amber-600' },
+  { name: 'Plumbing & Water', icon: Droplets, description: 'Taps, leaks, tank cleaning', color: 'from-blue-500 to-cyan-600' },
+  { name: 'Carpentry & Furniture', icon: Hammer, description: 'Repairs, assembly, custom work', color: 'from-amber-600 to-orange-600' },
+  { name: 'Construction & Civil Work', icon: Building2, description: 'Mason, tiles, roofing', color: 'from-slate-600 to-slate-800' },
+  { name: 'Home Cleaning & Pest Control', icon: Bug, description: 'Deep clean, pest control', color: 'from-rose-500 to-pink-600' },
+  { name: 'Gardening & Outdoor', icon: Leaf, description: 'Lawn, plants, landscaping', color: 'from-green-500 to-emerald-600' },
+  { name: 'Painting & Interior Decor', icon: Paintbrush, description: 'Interior, exterior, POP', color: 'from-purple-500 to-fuchsia-600' },
+  { name: 'Home Appliances Installation', icon: Tv2, description: 'AC, TV, RO, inverter', color: 'from-indigo-500 to-blue-600' },
+  { name: 'Household Help', icon: Home, description: 'Maid, cook, caregiver', color: 'from-teal-500 to-emerald-600' },
+  { name: 'Vehicles (Optional Expansion)', icon: Car, description: 'Mechanic, driver, detailing', color: 'from-sky-500 to-blue-600' },
+  { name: 'Miscellaneous Household Services', icon: Boxes, description: 'Odd jobs, shifting', color: 'from-stone-500 to-zinc-600' }
 ]
 
 export default function Landing() {
   const { user, token } = useAuth()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<'customer' | 'worker'>('customer')
+  const [phone, setPhone] = useState('')
+  const [locationFile, setLocationFile] = useState<File | null>(null)
+  const [workerForm, setWorkerForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    skills: '',
+    experience: '',
+    serviceLocation: '',
+    idProofFile: null as File | null
+  })
+
+  const handleWorkerInput = (key: string, value: string | File | null) => {
+    setWorkerForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  // If already logged in, redirect to respective dashboards
+  if (token && user?.role === 'CLIENT') {
+    navigate('/client')
+  } else if (token && user?.role === 'WORKER') {
+    navigate('/worker')
+  } else if (token && user?.role === 'ADMIN') {
+    navigate('/admin')
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20">
+      {/* Two-column Landing */}
+      <section className="relative overflow-hidden py-10">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center"
-          >
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-5xl md:text-7xl font-bold mb-6"
-            >
-              <span className="gradient-text">Rural Services</span>
-              <br />
-              <span className="text-foreground">at your doorstep</span>
-            </motion.h1>
-            
-            {!token ? (
-              <>
-                <motion.p 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
-                >
-                  From quick repairs to construction jobs, connect with verified workers and get the job done. 
-                  Trusted by thousands of customers across rural India.
-                </motion.p>
-                
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
-                >
-                  <Button variant="gradient" size="lg" className="text-lg px-8 py-4">
-                    <Link to="/client">Post a Job</Link>
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                  <Button variant="outline" size="lg" className="text-lg px-8 py-4">
-                    <Link to="/worker">Find Gigs</Link>
-                  </Button>
-                </motion.div>
-                
-                {/* Stats */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.8 }}
-                  className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto"
-                >
-                  <div className="text-center">
-                    <div className="text-3xl font-bold gradient-text">4.8</div>
-                    <div className="text-sm text-muted-foreground">Service Rating</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold gradient-text">10K+</div>
-                    <div className="text-sm text-muted-foreground">Verified Workers</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold gradient-text">50K+</div>
-                    <div className="text-sm text-muted-foreground">Jobs Completed</div>
-                  </div>
-                </motion.div>
-              </>
-            ) : (
-              <>
-                <motion.p 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
-                >
-                  Welcome back, {user?.name?.split(' ')[0]}! 
-                  {user?.role === 'CLIENT' ? ' What service do you need today?' : ' Ready to find your next gig?'}
-                </motion.p>
-                
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
-                >
-                  {user?.role === 'CLIENT' ? (
-                    <Button variant="gradient" size="lg" className="text-lg px-8 py-4">
-                      <Link to="/client">Go to Dashboard</Link>
-                      <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                  ) : user?.role === 'WORKER' ? (
-                    <Button variant="gradient" size="lg" className="text-lg px-8 py-4">
-                      <Link to="/worker">Find Jobs Near You</Link>
-                      <MapPin className="ml-2 w-5 h-5" />
-                    </Button>
-                  ) : null}
-                </motion.div>
-              </>
-            )}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-20 bg-card/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl font-bold mb-4 gradient-text">What are you looking for?</h2>
-            <p className="text-muted-foreground text-lg">Choose from our wide range of professional services</p>
-          </motion.div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {categories.map((category, index) => {
-              const Icon = category.icon
-              return (
-                <motion.div
-                  key={category.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  whileHover={{ y: -5 }}
-                >
-                  <Link 
-                    to={token && user?.role === 'CLIENT' ? "/client" : token && user?.role === 'WORKER' ? "/worker" : "/client"}
-                  >
-                    <Card className="h-full text-center hover:shadow-xl transition-all duration-300 group">
-                      <CardHeader>
-                        <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${category.color} flex items-center justify-center text-white group-hover:scale-110 transition-transform duration-300`}>
-                          <Icon className="w-8 h-8" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Left: Categories */}
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Find services by category</h2>
+              <p className="text-muted-foreground mb-6">Browse popular household and professional services</p>
+              <div className="grid grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto pr-2">
+                {categories.map((c, idx) => {
+                  const Icon = c.icon
+                  return (
+                    <Card key={c.name} className="group hover:shadow-md transition-all">
+                      <CardHeader className="pb-2">
+                        <div className={`w-12 h-12 rounded-md bg-gradient-to-r ${c.color} flex items-center justify-center text-white`}>
+                          <Icon className="w-6 h-6" />
                         </div>
-                        <CardTitle className="group-hover:text-primary transition-colors">
-                          {category.name}
-                        </CardTitle>
+                        <CardTitle className="mt-2 text-base">{c.name}</CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <CardDescription>
-                          {category.description}
-                        </CardDescription>
+                      <CardContent className="pt-0">
+                        <CardDescription className="text-sm">{c.description}</CardDescription>
                       </CardContent>
                     </Card>
-                  </Link>
-                </motion.div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Right: Auth Panels */}
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Get started</h2>
+              <div className="flex gap-2 mb-6">
+                <Button variant={activeTab === 'customer' ? 'gradient' : 'outline'} onClick={() => setActiveTab('customer')}>Customer Login</Button>
+                <Button variant={activeTab === 'worker' ? 'gradient' : 'outline'} onClick={() => setActiveTab('worker')}>Worker Login</Button>
+              </div>
+
+              {activeTab === 'customer' ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Login as Customer</CardTitle>
+                    <CardDescription>Use Gmail/Phone and share your location</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button variant="outline" className="w-full">Continue with Gmail</Button>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <label className="text-sm mb-1 block">Phone number</label>
+                        <Input placeholder="Enter phone number" value={phone} onChange={e => setPhone(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm mb-1 block">Upload location (file)</label>
+                        <Input type="file" onChange={e => setLocationFile(e.target.files?.[0] ?? null)} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button className="flex-1">Login</Button>
+                      <Button variant="outline" className="flex-1" asChild>
+                        <Link to="/pages/auth/Login">Advanced login</Link>
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Not registered? <Link to="/register" className="underline">Create an account</Link>
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Login as Worker</CardTitle>
+                    <CardDescription>Enter your details to access your dashboard</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm mb-1 block">Name</label>
+                        <Input placeholder="Full name" value={workerForm.name} onChange={e => handleWorkerInput('name', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm mb-1 block">Phone</label>
+                        <Input placeholder="Phone number" value={workerForm.phone} onChange={e => handleWorkerInput('phone', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm mb-1 block">Email</label>
+                        <Input placeholder="Email address" value={workerForm.email} onChange={e => handleWorkerInput('email', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm mb-1 block">Skills</label>
+                        <Input placeholder="e.g. Plumbing, Electrical" value={workerForm.skills} onChange={e => handleWorkerInput('skills', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm mb-1 block">Experience (years)</label>
+                        <Input placeholder="e.g. 3" value={workerForm.experience} onChange={e => handleWorkerInput('experience', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm mb-1 block">Serviceable location</label>
+                        <Input placeholder="City/Area" value={workerForm.serviceLocation} onChange={e => handleWorkerInput('serviceLocation', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-sm mb-1 block">ID proof (photo holding ID)</label>
+                        <Input type="file" onChange={e => handleWorkerInput('idProofFile', e.target.files?.[0] ?? null)} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button className="flex-1">Login</Button>
+                      <Button variant="outline" className="flex-1" asChild>
+                        <Link to="/pages/auth/Login">Advanced login</Link>
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Not registered? <Link to="/register" className="underline">Register now</Link>
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl font-bold mb-4 gradient-text">How it works</h2>
-            <p className="text-muted-foreground text-lg">Get your job done in 3 simple steps</p>
-          </motion.div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {steps.map((step, index) => {
-              const Icon = step.icon
-              return (
-                <motion.div
-                  key={step.number}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.2 }}
-                  viewport={{ once: true }}
-                  className="text-center"
-                >
-                  <Card className="h-full">
-                    <CardHeader>
-                      <div className="w-20 h-20 gradient-bg rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 animate-float">
-                        {step.number}
-                      </div>
-                      <CardTitle className="text-xl">{step.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-base">
-                        {step.description}
-                      </CardDescription>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
+      {/* (Optional) additional sections can follow below */}
+
+      
     </div>
   )
 }
