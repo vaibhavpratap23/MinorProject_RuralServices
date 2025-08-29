@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 @Repository
 public interface JobAssignmentRepository extends JpaRepository<JobAssignment, Long> {
@@ -19,6 +20,8 @@ public interface JobAssignmentRepository extends JpaRepository<JobAssignment, Lo
     List<JobAssignment> findByWorkerAndStatus(WorkerProfile worker, com.gigfinder.model.enums.AssignmentStatus status);
     
     boolean existsByJob(Job job);
+
+    long countByWorkerAndAssignedAtBetween(WorkerProfile worker, LocalDateTime start, LocalDateTime end);
 }
 
 

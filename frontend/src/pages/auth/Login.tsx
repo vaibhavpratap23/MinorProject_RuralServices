@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Phone } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../lib/auth';
@@ -11,12 +11,15 @@ const Login: React.FC = () => {
     email: '',
     password: ''
   });
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginAs, setLoginAs] = useState<'USER'|'ADMIN'>('USER');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { login } = useAuth();
+  const { login, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,6 +35,35 @@ const Login: React.FC = () => {
       else navigate('/client');
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    try {
+      setError('');
+      setLoading(true);
+      await sendOtp(phone);
+      setOtpSent(true);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Failed to send OTP.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    try {
+      setError('');
+      setLoading(true);
+      await verifyOtp(phone, otp);
+      const role = (JSON.parse(localStorage.getItem('user') || '{"role":"CLIENT"}')).role as 'CLIENT'|'WORKER'|'ADMIN';
+      if (role === 'ADMIN') navigate('/admin');
+      else if (role === 'WORKER') navigate('/worker');
+      else navigate('/client');
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Invalid OTP.');
     } finally {
       setLoading(false);
     }
@@ -108,7 +140,7 @@ const Login: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />} 
                 </button>
               </div>
             </div>
@@ -142,6 +174,44 @@ const Login: React.FC = () => {
             </Button>
           </form>
 
+          {/* Divider */}
+          <div className="my-6 flex items-center">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="px-4 text-xs text-muted-foreground">or</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Phone OTP Login */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Login with Phone OTP</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                type="tel"
+                placeholder="Enter phone number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {otpSent && (
+              <Input
+                placeholder="Enter OTP"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+            )}
+            {!otpSent ? (
+              <Button variant="outline" onClick={handleSendOtp} disabled={loading || !phone}>
+                Send OTP
+              </Button>
+            ) : (
+              <Button variant="gradient" onClick={handleVerifyOtp} disabled={loading || !otp}>
+                Verify & Login
+              </Button>
+            )}
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{' '}
@@ -161,7 +231,7 @@ const Login: React.FC = () => {
         >
           <p className="text-sm text-muted-foreground mb-4">Or continue with</p>
           <div className="flex gap-3 justify-center">
-            <Button variant="outline" size="sm" className="flex-1 max-w-32">
+            <Button variant="outline" size="sm" className="flex-1 max-w-32" onClick={() => window.location.href = '/api/auth/oauth2/authorization/google'}>
               <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>

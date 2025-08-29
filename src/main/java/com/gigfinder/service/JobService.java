@@ -44,6 +44,7 @@ public class JobService {
     private final RatingRepository ratingRepository;
     private final ReportRepository reportRepository;
     private final NotificationRepository notificationRepository;
+    private final OtpService otpService;
 
     public JobResponseDTO createJob(JobRequestDTO request) {
 
@@ -81,9 +82,24 @@ public class JobService {
                 .subCategory(subCategory)
                 .budget(request.getBudget())
                 .address(request.getAddress())
+                .locationLat(request.getLocationLat())
+                .locationLng(request.getLocationLng())
                 .status(JobStatus.OPEN)
                 .client(clientProfile)
                 .build();
+
+        // Scheduled time
+        if (request.getScheduledAt() != null && !request.getScheduledAt().isBlank()) {
+            try {
+                job.setScheduledAt(LocalDateTime.parse(request.getScheduledAt()));
+            } catch (Exception ignored) {}
+        }
+
+        // Persist photo URLs as JSON array string
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            String json = String.join("|", request.getImageUrls());
+            job.setPhotosJson(json);
+        }
 
         Job savedJob = jobRepository.save(job);
         
@@ -138,6 +154,10 @@ public class JobService {
         WorkerProfile workerProfile = workerProfileRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Worker profile not found"));
 
+        if (workerProfile.getVerificationStatus() == null || !workerProfile.getVerificationStatus().name().equals("VERIFIED")) {
+            throw new RuntimeException("Worker not verified yet");
+        }
+
         // 3️⃣ Find the job and validate it can be accepted
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found"));
@@ -148,6 +168,14 @@ public class JobService {
 
         if (jobAssignmentRepository.existsByJob(job)) {
             throw new RuntimeException("Job is already assigned");
+        }
+
+        // Enforce daily job limit (5 per day)
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        long acceptedToday = jobAssignmentRepository.countByWorkerAndAssignedAtBetween(workerProfile, startOfDay, endOfDay);
+        if (acceptedToday >= 5) {
+            throw new RuntimeException("Daily job limit reached (5). Try again tomorrow");
         }
 
         // 4️⃣ Create job assignment
@@ -252,6 +280,14 @@ public class JobService {
         return convertToResponseDTO(job);
     }
 
+    public boolean verifyCompletionOtp(Long jobId, String phone, String otp) {
+        Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job not found"));
+        if (job.getStatus() != JobStatus.ASSIGNED && job.getStatus() != JobStatus.IN_PROGRESS) {
+            throw new RuntimeException("Job cannot be completed - invalid status");
+        }
+        return otpService.verifyOtp(phone, otp);
+    }
+
     public JobResponseDTO startJob(Long jobId) {
         // 1️⃣ Get the username (email) of the logged in user
         String username = SecurityUtil.getCurrentUsername();
@@ -306,6 +342,36 @@ public class JobService {
         // Send real-time notification
         notificationService.sendJobStarted(job.getClient().getUser().getId(), jobId);
 
+        return convertToResponseDTO(job);
+    }
+
+    public JobResponseDTO markOnTheWay(Long jobId) {
+        String username = SecurityUtil.getCurrentUsername();
+        if (username == null) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        WorkerProfile workerProfile = workerProfileRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Worker profile not found"));
+
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("Job not found"));
+
+        if (job.getStatus() != JobStatus.ASSIGNED && job.getStatus() != JobStatus.IN_PROGRESS) {
+            throw new RuntimeException("Job cannot be updated to On The Way");
+        }
+
+        JobAssignment assignment = jobAssignmentRepository.findByJob(job)
+                .orElseThrow(() -> new RuntimeException("Job assignment not found"));
+        if (!assignment.getWorker().getId().equals(workerProfile.getId())) {
+            throw new RuntimeException("Not authorized to update this job");
+        }
+
+        // We keep Job.status as ASSIGNED until start; use notification to reflect "on the way"
+        notificationService.sendJobStarted(job.getClient().getUser().getId(), jobId);
         return convertToResponseDTO(job);
     }
 

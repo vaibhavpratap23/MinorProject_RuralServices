@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -16,4 +17,7 @@ public class JobRequestDTO {
     private BigDecimal budget;
     private String address;
     private String scheduledAt; // We'll use String for now, convert to OffsetDateTime in service
+    private BigDecimal locationLat;
+    private BigDecimal locationLng;
+    private List<String> imageUrls;
 }

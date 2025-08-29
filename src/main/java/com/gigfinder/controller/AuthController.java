@@ -157,12 +157,46 @@ public class AuthController {
             
             boolean isValid = otpService.verifyOtp(phoneNumber, otp);
             
-            if (isValid) {
-                return ResponseEntity.ok(Map.of("message", "OTP verified successfully"));
-            } else {
+            if (!isValid) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "Invalid OTP"));
             }
+
+            // Find or create user by phone number
+            Optional<User> existing = userRepository.findByPhone(phoneNumber);
+            User user = existing.orElseGet(() -> {
+                User u = User.builder()
+                        .name("User " + phoneNumber.substring(Math.max(0, phoneNumber.length()-4)))
+                        .phone(phoneNumber)
+                        .role(Role.CLIENT)
+                        .build();
+                return userRepository.save(u);
+            });
+
+            // Ensure client profile exists for CLIENT role
+            if (user.getRole() == Role.CLIENT) {
+                clientProfileRepository.findByUser(user).orElseGet(() -> {
+                    ClientProfile profile = ClientProfile.builder()
+                            .user(user)
+                            .address(null)
+                            .build();
+                    return clientProfileRepository.save(profile);
+                });
+            }
+
+            String token = jwtUtil.generateToken(user.getEmail() != null ? user.getEmail() : user.getPhone(), user.getRole().name());
+
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "user", Map.of(
+                            "id", user.getId(),
+                            "name", user.getName(),
+                            "email", user.getEmail(),
+                            "phone", user.getPhone(),
+                            "role", user.getRole().name()
+                    ),
+                    "message", "Login successful"
+            ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "OTP verification failed", "message", e.getMessage()));

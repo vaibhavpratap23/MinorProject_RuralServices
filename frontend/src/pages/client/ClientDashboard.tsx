@@ -12,10 +12,13 @@ import {
   X,
   Edit,
   Eye,
-  Star
+  Star,
+  Upload
 } from 'lucide-react'
 import axios from 'axios'
 import { Button } from '../../components/ui/Button'
+import { useAuth } from '../../lib/auth'
+import { useWebSocket } from '../../hooks/useWebSocket'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
 
@@ -28,10 +31,13 @@ type Job = {
   description?: string;
   address?: string;
   createdAt?: string;
+  scheduledAt?: string;
   category?: string;
 }
 
 export default function ClientDashboard() {
+  const { user } = useAuth()
+  useWebSocket(user ? String(user.id) : undefined)
   const [jobCategories, setJobCategories] = useState<any>({})
   const [jobs, setJobs] = useState<Job[]>([])
   const [form, setForm] = useState({ 
@@ -41,8 +47,13 @@ export default function ClientDashboard() {
     budget: '', 
     address: '',
     selectedCategory: '',
-    customJob: ''
+    customJob: '',
+    locationLat: '',
+    locationLng: '',
+    scheduledAt: '',
   })
+  const [images, setImages] = useState<File[]>([])
+  const [imageUrls, setImageUrls] = useState<string[]>([])
   const [showCustom, setShowCustom] = useState(false)
   const [showJobForm, setShowJobForm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -55,19 +66,51 @@ export default function ClientDashboard() {
     axios.get('/api/jobs/me').then(r => setJobs(r.data)).catch(()=>{})
   }, [])
 
+  const captureLocation = () => {
+    if (!navigator.geolocation) return alert('Geolocation not supported')
+    navigator.geolocation.getCurrentPosition(pos => {
+      setForm(f => ({ ...f, locationLat: String(pos.coords.latitude), locationLng: String(pos.coords.longitude) }))
+    }, () => alert('Failed to get location'))
+  }
+
+  const uploadImages = async (jobId?: number) => {
+    if (!images.length) return [] as string[]
+    const uploaded: string[] = []
+    for (const file of images) {
+      const fd = new FormData()
+      fd.append('file', file)
+      if (jobId) fd.append('jobId', String(jobId))
+      const res = await axios.post('/api/upload/job-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      uploaded.push(res.data.fileUrl)
+    }
+    return uploaded
+  }
+
   const postJob = async () => {
     try {
       setLoading(true)
       const jobTitle = showCustom ? form.customJob : form.selectedCategory
-      const payload = {
+      const payload: any = {
         title: jobTitle || form.title,
         description: form.description,
         categoryId: form.categoryId ? Number(form.categoryId) : undefined,
         budget: form.budget ? Number(form.budget) : undefined,
-        address: form.address
+        address: form.address,
+        locationLat: form.locationLat ? Number(form.locationLat) : undefined,
+        locationLng: form.locationLng ? Number(form.locationLng) : undefined,
+        scheduledAt: form.scheduledAt || undefined,
+        imageUrls: [] as string[]
       }
+
       const res = await axios.post('/api/jobs', payload)
-      setJobs([res.data, ...jobs])
+      const created = res.data
+
+      // Upload images and update job in UI (backend already stores URLs via upload endpoint)
+      if (images.length) {
+        await uploadImages(created.id)
+      }
+
+      setJobs([created, ...jobs])
       setForm({ 
         title: '', 
         description: '', 
@@ -75,8 +118,12 @@ export default function ClientDashboard() {
         budget: '', 
         address: '',
         selectedCategory: '',
-        customJob: ''
+        customJob: '',
+        locationLat: '',
+        locationLng: '',
+        scheduledAt: '',
       })
+      setImages([])
       setShowCustom(false)
       setShowJobForm(false)
     } catch (e: any) {
@@ -222,6 +269,46 @@ export default function ClientDashboard() {
                     onChange={e => setForm({ ...form, address: e.target.value })} 
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Latitude</label>
+                    <Input 
+                      placeholder="e.g., 12.9716" 
+                      value={form.locationLat} 
+                      onChange={e => setForm({ ...form, locationLat: e.target.value })} 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Longitude</label>
+                    <Input 
+                      placeholder="e.g., 77.5946" 
+                      value={form.locationLng} 
+                      onChange={e => setForm({ ...form, locationLng: e.target.value })} 
+                    />
+                  </div>
+                </div>
+                <Button variant="outline" onClick={captureLocation} className="w-full">Use Current Location</Button>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Preferred Date & Time</label>
+                  <Input 
+                    type="datetime-local"
+                    value={form.scheduledAt}
+                    onChange={e => setForm({ ...form, scheduledAt: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Upload Images</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={e => setImages(Array.from(e.target.files || []))}
+                    className="block w-full text-sm"
+                  />
+                </div>
                 
                 <Button 
                   variant="gradient"
@@ -280,6 +367,12 @@ export default function ClientDashboard() {
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
                               <span>{new Date(job.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {job.scheduledAt && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              <span>{new Date(job.scheduledAt).toLocaleString()}</span>
                             </div>
                           )}
                           {job.budget && (

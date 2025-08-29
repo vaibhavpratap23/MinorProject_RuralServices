@@ -1,9 +1,12 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { ThemeProvider } from './lib/theme'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import WorkerVerification from './pages/WorkerVerification'
+import Jobs from './pages/Jobs'
+import Users from './pages/Users'
+import Disputes from './pages/Disputes'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -32,6 +35,13 @@ function App() {
                   <span className="text-white font-bold text-sm">A</span>
                 </div>
                 <h1 className="text-xl font-semibold gradient-text">Admin Panel</h1>
+                <div className="ml-6 flex items-center gap-4 text-sm">
+                  <Link to="/" className="text-muted-foreground hover:text-foreground">Dashboard</Link>
+                  <Link to="/workers" className="text-muted-foreground hover:text-foreground">Workers</Link>
+                  <Link to="/jobs" className="text-muted-foreground hover:text-foreground">Jobs</Link>
+                  <Link to="/users" className="text-muted-foreground hover:text-foreground">Users</Link>
+                  <Link to="/disputes" className="text-muted-foreground hover:text-foreground">Disputes</Link>
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 <button
@@ -51,6 +61,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/workers" element={<WorkerVerification />} />
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/disputes" element={<Disputes />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

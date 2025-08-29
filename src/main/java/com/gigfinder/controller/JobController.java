@@ -68,9 +68,31 @@ public class JobController {
         return handleJobAction(id, jobService::startJob, "starting");
     }
 
+    @PutMapping("/{id}/on-the-way")
+    public ResponseEntity<?> onTheWay(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(jobService.markOnTheWay(id));
+        } catch (Exception e) {
+            return buildErrorResponse(e);
+        }
+    }
+
     @PutMapping("/{id}/complete")
     public ResponseEntity<?> completeJob(@PathVariable Long id) {
         return handleJobAction(id, jobService::completeJob, "completing");
+    }
+
+    @PostMapping("/{id}/complete/verify-otp")
+    public ResponseEntity<?> verifyCompletionOtp(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            String otp = body.get("otp");
+            String phone = body.get("phone");
+            boolean ok = jobService.verifyCompletionOtp(id, phone, otp);
+            if (!ok) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Invalid OTP"));
+            return ResponseEntity.ok(Map.of("message", "OTP verified. You can mark job complete."));
+        } catch (Exception e) {
+            return buildErrorResponse(e);
+        }
     }
 
     @PostMapping("/{id}/rating")

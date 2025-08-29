@@ -1,183 +1,118 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
+import { Button } from './ui/Button'
+import { MapPin, DollarSign, Clock, CheckCircle, Navigation, Image as ImageIcon, KeyRound } from 'lucide-react'
 import axios from 'axios'
-import { useToast } from '../hooks/useToast'
-import RatingModal from './RatingModal'
 
-type JobCardProps = {
-  job: {
-    id: number
-    title: string
-    description?: string
-    budget?: number
-    status: string
-    categoryName?: string
-    address?: string
-    createdAt?: string
-  }
-  onUpdate?: () => void
-  showActions?: boolean
-}
-
-export default function JobCard({ job, onUpdate, showActions = true }: JobCardProps) {
-  const [loading, setLoading] = useState(false)
-  const [showRatingModal, setShowRatingModal] = useState(false)
-  const { success, error } = useToast()
+export default function JobCard({ job, onUpdate, showActions = true }: { job: any; onUpdate?: () => void; showActions?: boolean }) {
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [otp, setOtp] = useState('')
+  const [phone, setPhone] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [verified, setVerified] = useState(false)
 
   const acceptJob = async () => {
-    setLoading(true)
-    try {
-      await axios.put(`/api/jobs/${job.id}/accept`)
-      success('Job Accepted', 'You have successfully accepted this job')
-      onUpdate?.()
-    } catch (e: any) {
-      error('Failed to Accept', e?.response?.data || 'Failed to accept job')
-    } finally {
-      setLoading(false)
-    }
+    await axios.put(`/api/jobs/${job.id}/accept`)
+    onUpdate && onUpdate()
   }
-
+  const onTheWay = async () => {
+    await axios.put(`/api/jobs/${job.id}/on-the-way`)
+    onUpdate && onUpdate()
+  }
   const startJob = async () => {
-    setLoading(true)
+    await axios.put(`/api/jobs/${job.id}/start`)
+    onUpdate && onUpdate()
+  }
+  const openComplete = () => {
+    setShowCompleteModal(true)
+  }
+  const uploadProof = async () => {
+    if (!proofFile) return
+    const fd = new FormData()
+    fd.append('file', proofFile)
+    fd.append('jobId', String(job.id))
+    await axios.post('/api/upload/job-proof', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  }
+  const verifyCompletionOtp = async () => {
+    setVerifying(true)
     try {
-      await axios.put(`/api/jobs/${job.id}/start`)
-      success('Job Started', 'You have started working on this job')
-      onUpdate?.()
-    } catch (e: any) {
-      error('Failed to Start', e?.response?.data || 'Failed to start job')
+      await uploadProof()
+      const res = await axios.post(`/api/jobs/${job.id}/complete/verify-otp`, { phone, otp })
+      setVerified(true)
     } finally {
-      setLoading(false)
+      setVerifying(false)
     }
   }
-
   const completeJob = async () => {
-    setLoading(true)
-    try {
-      await axios.put(`/api/jobs/${job.id}/complete`)
-      success('Job Completed', 'Job marked as completed successfully')
-      onUpdate?.()
-    } catch (e: any) {
-      error('Failed to Complete', e?.response?.data || 'Failed to complete job')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'OPEN': return 'bg-green-100 text-green-800'
-      case 'ASSIGNED': return 'bg-blue-100 text-blue-800'
-      case 'IN_PROGRESS': return 'bg-yellow-100 text-yellow-800'
-      case 'COMPLETED': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getActionButton = () => {
-    if (!showActions) return null
-    
-    switch (job.status) {
-      case 'OPEN':
-        return (
-          <button 
-            onClick={acceptJob} 
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Accepting...' : 'Accept Job'}
-          </button>
-        )
-      case 'ASSIGNED':
-        return (
-          <button 
-            onClick={startJob} 
-            disabled={loading}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-          >
-            {loading ? 'Starting...' : 'Start Job'}
-          </button>
-        )
-      case 'IN_PROGRESS':
-        return (
-          <button 
-            onClick={completeJob} 
-            disabled={loading}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-          >
-            {loading ? 'Completing...' : 'Complete Job'}
-          </button>
-        )
-      case 'COMPLETED':
-        return (
-          <button 
-            onClick={() => setShowRatingModal(true)} 
-            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-          >
-            Rate Job
-          </button>
-        )
-      default:
-        return null
-    }
+    if (!verified) return
+    await axios.put(`/api/jobs/${job.id}/complete`)
+    setShowCompleteModal(false)
+    onUpdate && onUpdate()
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{job.title}</h3>
-          {job.description && (
-            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{job.description}</p>
-          )}
-        </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-          {job.status.replace('_', ' ')}
-        </span>
-      </div>
-
-      <div className="space-y-2 mb-4">
-        {job.categoryName && (
-          <div className="flex items-center text-sm text-gray-600">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            {job.categoryName}
-          </div>
-        )}
-        {job.address && (
-          <div className="flex items-center text-sm text-gray-600">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            {job.address}
-          </div>
-        )}
-        {job.createdAt && (
-          <div className="flex items-center text-sm text-gray-600">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            {new Date(job.createdAt).toLocaleDateString()}
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
+    <Card className="glass rounded-xl">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>{job.title}</span>
           {job.budget && (
-            <div className="text-lg font-bold text-green-600">
-              ₹{job.budget.toLocaleString()}
-            </div>
+            <span className="text-sm flex items-center gap-1"><DollarSign className="w-4 h-4" />{job.budget}</span>
           )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {job.description && <p className="text-sm text-muted-foreground mb-3">{job.description}</p>}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+          {job.address && (<span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{job.address}</span>)}
+          {job.scheduledAt && (<span className="flex items-center gap-1"><Clock className="w-4 h-4" />{new Date(job.scheduledAt).toLocaleString()}</span>)}
         </div>
-        {getActionButton()}
-      </div>
-      <RatingModal 
-        jobId={job.id}
-        isOpen={showRatingModal}
-        onClose={() => setShowRatingModal(false)}
-        onRatingSubmitted={() => onUpdate?.()}
-      />
-    </div>
+        {showActions && (
+          <div className="flex flex-wrap gap-2">
+            {job.status === 'OPEN' && (<Button variant="gradient" onClick={acceptJob}>Accept</Button>)}
+            {job.status === 'ASSIGNED' && (<Button variant="outline" onClick={onTheWay}><Navigation className="w-4 h-4 mr-1" />On the way</Button>)}
+            {job.status === 'ASSIGNED' && (<Button variant="gradient" onClick={startJob}>Start</Button>)}
+            {job.status === 'IN_PROGRESS' && (
+              <>
+                <Button variant="outline" onClick={openComplete}><ImageIcon className="w-4 h-4 mr-1" />Proof & OTP</Button>
+                <Button variant="gradient" onClick={completeJob} disabled={!verified}><CheckCircle className="w-4 h-4 mr-1" />Complete</Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {showCompleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="glass rounded-xl p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">Complete Job</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Upload Completion Photo</label>
+                  <input type="file" accept="image/*" onChange={e => setProofFile((e.target.files && e.target.files[0]) || null)} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Customer Phone</label>
+                  <input className="w-full bg-transparent border border-white/20 rounded-lg px-3 py-2" placeholder="Enter customer's phone" value={phone} onChange={e => setPhone(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Completion OTP</label>
+                  <div className="flex gap-2">
+                    <input className="flex-1 bg-transparent border border-white/20 rounded-lg px-3 py-2" placeholder="Enter OTP" value={otp} onChange={e => setOtp(e.target.value)} />
+                    <Button variant="outline" onClick={verifyCompletionOtp} disabled={verifying || !proofFile || !phone || !otp}>
+                      <KeyRound className="w-4 h-4 mr-1" />Verify
+                    </Button>
+                  </div>
+                  {verified && <p className="text-xs text-green-500 mt-1">OTP verified. You can complete the job.</p>}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setShowCompleteModal(false)}>Cancel</Button>
+                  <Button variant="gradient" onClick={completeJob} disabled={!verified}><CheckCircle className="w-4 h-4 mr-1" />Complete</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

@@ -41,6 +41,9 @@ public class AdminController {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private com.gigfinder.service.NotificationService notificationService;
+
     @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> getDashboardStats() {
         try {
@@ -74,6 +77,86 @@ public class AdminController {
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/jobs")
+    public ResponseEntity<List<Map<String,Object>>> listJobs() {
+        try {
+            List<com.gigfinder.model.Job> jobs = jobRepository.findAll();
+            List<Map<String,Object>> resp = jobs.stream().map(j -> {
+                Map<String,Object> m = new HashMap<>();
+                m.put("id", j.getId());
+                m.put("title", j.getTitle());
+                m.put("status", j.getStatus());
+                m.put("clientName", j.getClient().getUser().getName());
+                m.put("workerId", j.getWorker() != null ? j.getWorker().getId() : null);
+                m.put("address", j.getAddress());
+                m.put("scheduledAt", j.getScheduledAt());
+                m.put("createdAt", j.getCreatedAt());
+                return m;
+            }).toList();
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
+    }
+
+    @GetMapping("/workers/verified")
+    public ResponseEntity<List<Map<String,Object>>> listVerifiedWorkers() {
+        try {
+            List<WorkerProfile> workers = workerProfileRepository.findByVerificationStatus(VerificationStatus.VERIFIED);
+            List<Map<String,Object>> resp = workers.stream().map(w -> {
+                Map<String,Object> m = new HashMap<>();
+                m.put("id", w.getId());
+                m.put("userId", w.getUser().getId());
+                m.put("name", w.getUser().getName());
+                m.put("phone", w.getUser().getPhone());
+                return m;
+            }).toList();
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
+    }
+
+    @Autowired
+    private com.gigfinder.repository.JobAssignmentRepository jobAssignmentRepository;
+
+    @PostMapping("/jobs/{jobId}/reassign")
+    public ResponseEntity<?> reassignJob(@PathVariable Long jobId, @RequestBody Map<String, Long> body) {
+        try {
+            Long workerProfileId = body.get("workerProfileId");
+            if (workerProfileId == null) return ResponseEntity.badRequest().body(Map.of("error","workerProfileId required"));
+
+            com.gigfinder.model.Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job not found"));
+            WorkerProfile newWorker = workerProfileRepository.findById(workerProfileId).orElseThrow(() -> new RuntimeException("Worker not found"));
+
+            // Update or create assignment
+            java.util.Optional<com.gigfinder.model.JobAssignment> existing = jobAssignmentRepository.findByJob(job);
+            if (existing.isPresent()) {
+                com.gigfinder.model.JobAssignment a = existing.get();
+                a.setWorker(newWorker);
+                jobAssignmentRepository.save(a);
+            } else {
+                com.gigfinder.model.JobAssignment a = com.gigfinder.model.JobAssignment.builder()
+                        .job(job)
+                        .worker(newWorker)
+                        .status(com.gigfinder.model.enums.AssignmentStatus.ASSIGNED)
+                        .build();
+                jobAssignmentRepository.save(a);
+            }
+
+            job.setWorker(newWorker.getUser());
+            if (job.getStatus() == com.gigfinder.model.enums.JobStatus.OPEN) {
+                job.setStatus(com.gigfinder.model.enums.JobStatus.ASSIGNED);
+            }
+            jobRepository.save(job);
+
+            notificationService.sendJobAccepted(job.getClient().getUser().getId(), jobId, newWorker.getUser().getName());
+            return ResponseEntity.ok(Map.of("message","Job reassigned"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -231,6 +314,9 @@ public class AdminController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Worker approved successfully");
+            // TODO: send email here via NotificationService or Mailer; for now, emit websocket
+            // This simplistic notification informs the user in-app
+            // notificationService.sendJobNotification(worker.getUser().getId(), "WORKER_APPROVED", Map.of("message", "You are verified. Start exploring jobs."));
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {

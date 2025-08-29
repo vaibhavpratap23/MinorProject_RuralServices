@@ -69,6 +69,12 @@ public class Job {
     @Column(name = "accepted_at")
     private LocalDateTime acceptedAt;
 
+    @Column(name = "photos_json", columnDefinition = "text")
+    private String photosJson;
+
+    @Column(name = "proof_photo_url", columnDefinition = "text")
+    private String proofPhotoUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

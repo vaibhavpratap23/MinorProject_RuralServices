@@ -85,7 +85,8 @@ public class AdminService {
         WorkerProfile worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new RuntimeException("Worker not found"));
         worker.setVerificationStatus(VerificationStatus.APPROVED);
-        return workerRepository.save(worker);
+        WorkerProfile saved = workerRepository.save(worker);
+        return saved;
     }
     
     public WorkerProfile rejectWorker(Long workerId, String reason) {

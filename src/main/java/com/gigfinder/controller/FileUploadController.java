@@ -27,6 +27,9 @@ public class FileUploadController {
 
     @Autowired
     private WorkerProfileRepository workerProfileRepository;
+    @Autowired
+    private com.gigfinder.repository.JobRepository jobRepository;
+    
 
     @PostMapping("/document")
     public ResponseEntity<?> uploadDocument(
@@ -59,6 +62,51 @@ public class FileUploadController {
                     "message", "Document uploaded successfully"
             ));
 
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "File upload failed", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/job-image")
+    public ResponseEntity<?> uploadJobImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("jobId") Long jobId) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+            }
+
+            Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job not found"));
+            String fileUrl = fileUploadService.saveFile(file);
+
+            String existing = job.getPhotosJson();
+            if (existing == null || existing.isBlank()) job.setPhotosJson(fileUrl);
+            else job.setPhotosJson(existing + "|" + fileUrl);
+            jobRepository.save(job);
+
+            return ResponseEntity.ok(Map.of("fileUrl", fileUrl, "message", "Job image uploaded"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "File upload failed", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/job-proof")
+    public ResponseEntity<?> uploadJobProof(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("jobId") Long jobId) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+            }
+
+            Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job not found"));
+            String fileUrl = fileUploadService.saveFile(file);
+            job.setProofPhotoUrl(fileUrl);
+            jobRepository.save(job);
+
+            return ResponseEntity.ok(Map.of("fileUrl", fileUrl, "message", "Proof uploaded"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "File upload failed", "message", e.getMessage()));
