@@ -2,6 +2,7 @@ package com.gigfinder.controller;
 
 import com.gigfinder.model.Document;
 import com.gigfinder.model.WorkerProfile;
+import com.gigfinder.model.Job;
 import com.gigfinder.model.enums.DocumentType;
 import com.gigfinder.repository.DocumentRepository;
 import com.gigfinder.repository.WorkerProfileRepository;

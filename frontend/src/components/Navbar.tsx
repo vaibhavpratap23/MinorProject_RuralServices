@@ -138,7 +138,7 @@ const Navbar: React.FC = () => {
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-48 glass rounded-lg shadow-xl border border-white/10 backdrop-blur-xl"
+                      className="absolute right-0 mt-2 w-48 glass rounded-lg shadow-xl border border-white/10 backdrop-blur-xl z-[100]"
                     >
                       <div className="py-2">
                         <div className="px-4 py-2 border-b border-white/10">

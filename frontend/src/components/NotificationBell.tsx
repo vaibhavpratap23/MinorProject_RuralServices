@@ -6,22 +6,25 @@ import { Button } from './ui/Button';
 export const NotificationBell: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, message: 'New job request', details: 'Plumbing service in your area', time: '2 hours ago', read: false },
+    { id: 2, message: 'Payment received', details: '₹800 for cleaning service', time: '4 hours ago', read: false },
+    { id: 3, message: 'Job completed', details: 'Electrical repair marked as done', time: '6 hours ago', read: false }
+  ]);
+
+  const markAllAsRead = () => {
+    const updatedNotifications = notifications.map(notif => ({
+      ...notif,
+      read: true
+    }));
+    setNotifications(updatedNotifications);
+    setUnreadCount(0);
+  };
 
   useEffect(() => {
-    const fetchUnreadCount = () => {
-      // In real app, call API to get unread notifications count
-      // axios.get('/api/notifications/count/unread')
-      //   .then(r => setUnreadCount(r.data.unreadCount))
-      //   .catch(() => {})
-      
-      // Mock data
-      setUnreadCount(3);
-    };
-    
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, []);
+    const unread = notifications.filter(n => !n.read).length;
+    setUnreadCount(unread);
+  }, [notifications]);
 
   return (
     <div className="relative">
@@ -64,21 +67,16 @@ export const NotificationBell: React.FC = () => {
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {unreadCount > 0 ? (
                   <>
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                      <p className="text-sm font-medium">New job request</p>
-                      <p className="text-xs text-muted-foreground">Plumbing service in your area</p>
-                      <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                      <p className="text-sm font-medium">Payment received</p>
-                      <p className="text-xs text-muted-foreground">₹800 for cleaning service</p>
-                      <p className="text-xs text-muted-foreground mt-1">4 hours ago</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                      <p className="text-sm font-medium">Job completed</p>
-                      <p className="text-xs text-muted-foreground">Electrical repair marked as done</p>
-                      <p className="text-xs text-muted-foreground mt-1">6 hours ago</p>
-                    </div>
+                    {notifications.map((notification) => (
+                      <div 
+                        key={notification.id}
+                        className={`p-3 rounded-lg ${notification.read ? 'bg-muted/20' : 'bg-primary/10 border border-primary/20'}`}
+                      >
+                        <p className="text-sm font-medium">{notification.message}</p>
+                        <p className="text-xs text-muted-foreground">{notification.details}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                      </div>
+                    ))}
                   </>
                 ) : (
                   <div className="text-center py-8">
@@ -90,7 +88,12 @@ export const NotificationBell: React.FC = () => {
               
               {unreadCount > 0 && (
                 <div className="mt-4 pt-4 border-t border-white/10">
-                  <Button variant="outline" size="sm" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={markAllAsRead}
+                  >
                     Mark all as read
                   </Button>
                 </div>
